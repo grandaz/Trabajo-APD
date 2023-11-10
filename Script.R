@@ -1,23 +1,67 @@
+# Instalar y cargar dplyr, magrittr, rpart, pROC y rpart.plot si no est谩n instalados
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+if (!requireNamespace("magrittr", quietly = TRUE)) {
+  install.packages("magrittr")
+}
+if (!requireNamespace("rpart", quietly = TRUE)) {
+  install.packages("rpart")
+}
+if (!requireNamespace("pROC", quietly = TRUE)) {
+  install.packages("pROC")
+}
+if (!requireNamespace("rpart.plot", quietly = TRUE)) {
+  install.packages("rpart.plot")
+}
+if (!requireNamespace("psych", quietly = TRUE)) {
+  install.packages("psych")
+}
+library(dplyr)
+library(magrittr)
+library(rpart)
+library(pROC)
+library(rpart.plot)
+library(psych)
+library(ggplot2)
+
+
+# Leer datos
 heart_data <- read.csv("heart_data.csv")
 
-# Elimina la columna index y id
+# Eliminar las columnas index y id
 heart_data <- heart_data[,-c(1,2)]
 
-# Pasa la edad de d韆s a a駉s
-heart_data$age <- heart_data$age / 365.25 # .25 para los a駉s bisiestos
-#heart_data$age <- round(heart_data$age / 365.25)     # Redondea las edades
-#heart_data$age <- floor(heart_data$age / 365.25)     # Redondea hacia abajo
-#heart_data$age <- ceiling(heart_data$age / 365.25)   # Redondea hacia arriba
+# Convertir edad de d铆as a a帽os
+heart_data$age <- heart_data$age / 365.25 # .25 para los a帽os bisiestos
 
-# Crea una nueva columna para determinar si tiene presi髇 arterial alta o baja
+# Crear una nueva columna para determinar si tiene presi贸n arterial alta o baja
 heart_data$high_bp <- ifelse(heart_data$ap_hi >= 140 | heart_data$ap_lo >= 90, 1, 0)
 
-
-#install.packages("dplyr")
-library(dplyr)
-
-# Elimina las columnas ap_hi y ap_lo
+# Eliminar las columnas ap_hi y ap_lo
 heart_data <- heart_data %>% select(-c("ap_hi", "ap_lo"))
+
+#------------------------------------------------------------------------------#
+# An谩lisis descriptivo                                                         #                                                
+#------------------------------------------------------------------------------#
+
+# Gr谩fico de matriz de dispersi贸n
+pairs(heart_data[, c('age', 'height', 'weight')])
+
+# Matriz de correlaciones
+corr_matrix <- cor(heart_data)
+print(corr_matrix)
+
+# Gr谩fico de matriz de correlaciones
+psych::cor.plot(corr_matrix)
+
+# Diagrama de dispersi贸n entre variables
+ggplot(heart_data, aes(x = age, y = weight)) +
+  geom_point() +
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "Diagrama de dispersi贸n entre edad y peso",
+       x = "Edad",
+       y = "Peso")
 
 # Factorizar los datos binarios
 heart_data$gender <- factor(heart_data$gender)
@@ -26,43 +70,33 @@ heart_data$gluc <- factor(heart_data$gluc, ordered = TRUE)
 heart_data$smoke <- factor(heart_data$smoke)
 heart_data$alco <- factor(heart_data$alco)
 heart_data$active <- factor(heart_data$active)
-#heart_data$cardio <- factor(heart_data$cardio)
 heart_data$high_bp <- factor(heart_data$high_bp)
 
 # Estandarizar variables
 heart_data[, c('age', 'height', 'weight')] <- scale(heart_data[, c('age', 'height', 'weight')])
 
 #------------------------------------------------------------------------------#
-# An醠isis descriptivo                                                         #                                                
-#------------------------------------------------------------------------------#
-# Relaci髇 con las variables predictoras
-par(mfrow=c(1,3))
-plot(cardio ~ age,data =  heart_data)
-plot(cardio ~ gender,data =  heart_data)
-plot(cardio ~ height,data =  heart_data)
-par(mfrow=c(1,1))
-
-library(ggplot2)
-library(psych)
-# Matriz de Varianza Covarianza
-cov(heart_data)
-
-# Matriz de correlaciones
-corr.test(heart_data)
-cor.plot(cor(heart_data))
-
-
-#------------------------------------------------------------------------------#
-# Regresi髇 Lineal M鷏tiple (RLM)                                                #                                                
+# Regresi贸n Log铆stica                                                         #                                                
 #------------------------------------------------------------------------------#
 
-# Modelo completo
-full.model  <- glm(cardio ~ age + gender + height + weight + cholesterol + gluc + smoke
+# Regresi贸n Log铆stica
+full_model <- glm(cardio ~ age + gender + height + weight + cholesterol + gluc + smoke
                   + alco + active + high_bp, data = heart_data, family = "binomial")
-summary(full.model)
 
+# Mostrar resumen del modelo con Odds Ratios
+exp(cbind(OR = coef(full_model), confint(full_model)))
 
+# Gr谩fico ROC
+roc_curve <- roc(heart_data$cardio, predict(full_model, type = "response"))
+plot(roc_curve, main = "Curva ROC", col = "blue", lwd = 2)
 
+#------------------------------------------------------------------------------#
+# 脕rboles de Decisi贸n Binarios                                                #                                                
+#------------------------------------------------------------------------------#
 
+# Crear modelo de 谩rbol de decisi贸n con control de profundidad
+tree_model <- rpart(high_bp ~ age + gender + height + weight + cholesterol + gluc + smoke
+                    + alco + active, data = heart_data, method = "class", control = rpart.control(maxdepth = 3))
 
-
+# Visualizar el 谩rbol de decisi贸n con rpart.plot
+prp(tree_model, type = 2, extra = 1, main = "脕rbol de Decisi贸n Binario")
