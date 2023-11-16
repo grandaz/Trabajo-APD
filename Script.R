@@ -15,8 +15,8 @@ heart_data$high_bp <- ifelse(heart_data$ap_hi >= 140 | heart_data$ap_lo >= 90, 1
 
 library(dplyr)
 
-# Elimina las columnas ap_hi y ap_lo
-heart_data <- heart_data %>% select(-c("ap_hi", "ap_lo"))
+# Elimina las columnas ap_hi y ap_lo (después se decidió eliminar las variables altura y género)
+heart_data <- heart_data %>% select(-c("ap_hi", "ap_lo", "height", "gender"))
 
 
 #------------------------------------------------------------------------------#
@@ -91,10 +91,10 @@ barplot(table(heart_data$gender, heart_data$cardio),
         main = "Relación entre Género y Enfermedad cardiovascular")
 
 boxplot(height ~ cardio, data = heart_data, col = c("lightblue", "lightyellow"), 
-        main = "Relación entre Edad y Enfermedad cardiovascular")
+        main = "Relación entre Altura y Enfermedad cardiovascular")
 
 boxplot(weight ~ cardio, data = heart_data, col = c("lightblue", "lightyellow"), 
-        main = "Relación entre Edad y Enfermedad cardiovascular")
+        main = "Relación entre Peso y Enfermedad cardiovascular")
 
 barplot(table(heart_data$cholesterol, heart_data$cardio), 
         col = c("lightblue", "lightyellow", "lightgreen"), 
@@ -134,11 +134,11 @@ boxplot(heart_data$weight, main = "Boxplot de Variable Peso")
 
 
 # 8. Normalización/Estandarización de las variables para reducir influencia de outliers
-heart_data[, c('age', 'height', 'weight')] <- scale(heart_data[, c('age', 'height', 'weight')])
+heart_data[, c('age','weight')] <- scale(heart_data[, c('age','weight')])
 
 
 # Factorizar los variables binarias y categóricas
-heart_data$gender <- factor(heart_data$gender)
+# heart_data$gender <- factor(heart_data$gender)
 heart_data$cholesterol <- factor(heart_data$cholesterol, ordered = TRUE)
 heart_data$gluc <- factor(heart_data$gluc, ordered = TRUE)
 heart_data$smoke <- factor(heart_data$smoke)
@@ -224,6 +224,9 @@ summary(tree_model$finalModel)
 # Visualizar el árbol de decisión con rpart.plot
 library(rpart.plot)
 prp(tree_model$finalModel, type = 2, extra = 1, main = "Árbol de Decisión Binario")
+
+library(partykit)
+plot(as.party(tree_model$finalModel), tp_args = list(id = FALSE))
 
 
 #------------------------------------------------------------------------------#
